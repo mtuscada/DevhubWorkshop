@@ -64,6 +64,33 @@ jobs:
         uses: JetBrains/ReSharper-InspectCode@v0.11
         with:
           solution: ${{ env.solutionPath }}
+          
+      - name: Collect InspectCode XML reports
+        run: |
+          set -e
+          mkdir -p reports
+          # Find likely InspectCode / ReSharper XML outputs and copy them into reports/
+          # (tolerant if none are found)
+          find "$GITHUB_WORKSPACE" -type f \( -iname '*inspect*.xml' -o -iname '*resharper*.xml' -o -iname '*inspection*_report*.xml' \) -print0 | \
+            xargs -0 -I{} bash -c 'cp --parents "{}" reports/ || true' || true
+          echo "Reports directory contents:"
+          ls -R reports || true
+
+      - name: Upload InspectCode report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: inspectcode-report
+          path: reports/
+
+      - name: Print report(s) to log (first 200 lines each) (optional)
+        if: always()
+        run: |
+          # print a short preview into the job log for quick debugging
+          find reports -type f -name '*.xml' -print0 | while IFS= read -r -d '' f; do
+            echo "===== $f ====="
+            sed -n '1,200p' "$f" || true
+            echo "..."
+          done || true
 
     permissions:
       security-events: write
