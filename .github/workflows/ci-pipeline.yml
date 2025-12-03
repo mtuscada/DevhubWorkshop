@@ -52,19 +52,58 @@ jobs:
       - name: Test with the dotnet CLI
         run: dotnet test ${{ env.solutionPath }}
       
+name: InspectCode
+
+on:
+  push:
+  pull_request:
+
+env:
+  # Optionally set SOLUTION_PATH here or via repository/workflow envs.
+  # If left empty the job will try to auto-detect a .sln file.
+  SOLUTION_PATH: ""
+
+jobs:
   inspect-code:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           submodules: recursive
 
-      - name: Annotate
-        # You may pin to the exact commit or the version.
+      - name: Auto-detect solution file (if SOLUTION_PATH not set)
+        id: detect
+        run: |
+          set -e
+          # If SOLUTION_PATH is already provided as an env, use it.
+          if [ -n "${{ env.SOLUTION_PATH }}" ]; then
+            echo "Using SOLUTION_PATH from workflow env: '${{ env.SOLUTION_PATH }}'"
+            echo "SOLUTION_PATH=${{ env.SOLUTION_PATH }}" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # Try to find a .sln in the repository (limit depth to avoid long searches)
+          sln=$(find "$GITHUB_WORKSPACE" -maxdepth 3 -type f -name '*.sln' | head -n 1 || true)
+          if [ -z "$sln" ]; then
+            echo "No .sln found in the repository root or nearby (depth 3)."
+            echo "If you want to analyze a project/solution, set SOLUTION_PATH to the path relative to the repository root."
+            echo "SOLUTION_PATH=" >> $GITHUB_ENV
+          else
+            # convert to path relative to workspace (InspectCode expects a path relative to repo)
+            rel=${sln#"$GITHUB_WORKSPACE"/}
+            echo "Detected solution: $rel"
+            echo "SOLUTION_PATH=$rel" >> $GITHUB_ENV
+          fi
+
+      - name: Annotate (run InspectCode)
+        if: ${{ env.SOLUTION_PATH != '' }}
+        # You may pin to the exact commit or a version tag for the action.
         uses: JetBrains/ReSharper-InspectCode@v0.11
         with:
-          solution: ${{ env.solutionPath }}
-          
+          solution: ${{ env.SOLUTION_PATH }}
+          # Optionally add other inputs supported by the action, e.g. output, profile, severity etc.
+
       - name: Collect InspectCode XML reports
         run: |
           set -e
