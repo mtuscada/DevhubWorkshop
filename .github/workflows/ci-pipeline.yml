@@ -52,26 +52,7 @@ jobs:
       - name: Test with the dotnet CLI
         run: dotnet test ${{ env.solutionPath }}
       
-name: InspectCode
-
-on:
-  push:
-  pull_request:
-
-env:
-  # Optionally set SOLUTION_PATH here or via repository/workflow envs.
-  # If left empty the job will try to auto-detect a .sln file.
-  SOLUTION_PATH: ""
-
-jobs:
   inspect-code:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-
       - name: Auto-detect solution file (if SOLUTION_PATH not set)
         id: detect
         run: |
