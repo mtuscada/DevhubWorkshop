@@ -47,4 +47,8 @@ jobs:
         uses: gittools/actions/gitversion/execute@v4.2.0
         with:
           updateProjectFiles: true
+
+      # run test
+      - name: Test with the dotnet CLI
+        run: dotnet test --no-build
       
